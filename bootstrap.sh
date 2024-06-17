@@ -20,3 +20,6 @@ echo "Installing dependencies..."
 ./vcpkg/vcpkg install
 
 echo "vcpkg and dependencies installed successfully!"
+
+cmake -S . -B build
+cmake --build build
