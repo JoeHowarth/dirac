@@ -35,23 +35,38 @@ struct LineStrip : public sf::Drawable {
     }
 };
 
+using Drawable = std::variant<
+    Line,
+    LineStrip,
+    sf::CircleShape,
+    sf::RectangleShape,
+    sf::ConvexShape,
+    sf::Sprite,
+    sf::Text>;
+
+void drawDrawable(Drawable& drawable, sf::RenderTarget& target) {
+    std::visit([&target](auto&& arg) { target.draw(arg); }, drawable);
+}
+
 template <typename T, typename Func>
 concept CallableWith = requires(Func f, T t) {
     { f(t) } -> std::convertible_to<Vec2>;
 };
 
 struct LayeredDrawer {
-    std::vector<std::vector<std::unique_ptr<sf::Drawable>>> layers;
-    const bool clearEveryFrame = false;
+    std::vector<std::vector<Drawable>> layers;
+    const bool                         clearEveryFrame = false;
 
     LayeredDrawer(int numLayers = 1) : layers(numLayers) {}
 
-    void draw(std::unique_ptr<sf::Drawable> drawable, int layer = 0) {
+    void draw(Drawable drawable, int layer = -1) {
+        layer = layer == -1 ? this->layers.size() - 1 : layer;
         this->layers[layer].push_back(std::move(drawable));
     }
 
-    void line(const Vec2 start, const Vec2 end, int layer = 0) {
-        this->layers[layer].push_back(std::make_unique<Line>(start, end));
+    void line(const Vec2 start, const Vec2 end, int layer = -1) {
+        layer = layer == -1 ? this->layers.size() - 1 : layer;
+        this->layers[layer].push_back(Line{start, end});
     }
 
     void lineStrip(
@@ -59,28 +74,26 @@ struct LayeredDrawer {
         sf::Color                color = sf::Color::Red,
         int                      layer = 0
     ) {
-        this->layers[layer].push_back(std::make_unique<LineStrip>(points, color)
-        );
+        this->layers[layer].push_back(LineStrip{points, color});
     }
 
     template <std::forward_iterator It, typename Func>
         requires CallableWith<
             typename std::iterator_traits<It>::value_type,
             Func>
-    void lineStripMap(It begin, It end, Func toWorld) {
+    void lineStripMap(It begin, It end, Func toWorld, int layer = -1) {
+        layer = layer == -1 ? this->layers.size() - 1 : layer;
         std::vector<Vec2> path;
         std::transform(begin, end, std::back_inserter(path), toWorld);
-        this->lineStrip(path, sf::Color::Red);
+        this->lineStrip(path, sf::Color::Red, layer);
     }
 
-    void point(const Vec2 point, int layer = 0) {
-        std::unique_ptr<sf::CircleShape> circle =
-            std::make_unique<sf::CircleShape>(2);
-        circle->setPosition(point);
-        circle->setFillColor(sf::Color::Red);
-        this->layers[layer].push_back(
-            std::unique_ptr<sf::Drawable>(std::move(circle))
-        );
+    void point(const Vec2 point, int layer = -1) {
+        layer = layer == -1 ? this->layers.size() - 1 : layer;
+        sf::CircleShape circle(2);
+        circle.setPosition(point);
+        circle.setFillColor(sf::Color::Red);
+        this->layers[layer].push_back(circle);
     }
 
     void clear(int layer) {
@@ -90,7 +103,9 @@ struct LayeredDrawer {
     void display(sf::RenderWindow& window) {
         for (auto& layer : this->layers) {
             for (const auto& drawable : layer) {
-                window.draw(*drawable);
+                std::visit(
+                    [&window](auto&& arg) { window.draw(arg); }, drawable
+                );
             }
             if (this->clearEveryFrame) {
                 layer.clear();
