@@ -3,30 +3,11 @@
 #include "components.h"
 #include "utils/util.h"
 
-flecs::entity spawnAnomaloid(flecs::world& ecs, Mass mass, Position pos) {
-    Radius      radius(mass.v * 5);
-    BoundingBox boundingBox = {
-        .top = Vec2(pos.v.x - radius.v, pos.v.y - radius.v),
-        .bot = Vec2(pos.v.x + radius.v, pos.v.y + radius.v)
-    };
-    return ecs.entity()
-        .set(AnomalyMult(randomFloat(1., 10)))
-        .set(mass)
-        .set(pos)
-        .set(radius)
-        .set(boundingBox);
-}
-
-void spawnAnomaloids2(flecs::world& ecs, int number) {
-    spawnAnomaloid(ecs, Mass(10), Position({100, 100}));
-    spawnAnomaloid(ecs, Mass(11), Position({100, 0}));
-}
-
 void collisionDetection(flecs::world& ecs) {
     DeferGuard g(ecs);
     ecs.each([&ecs](flecs::entity e1, const BoundingBox& box1) {
         ecs.each([&](flecs::entity e2, const BoundingBox& box2) {
-            fmt::println("Checking {} and {}", e1, e2);
+            // fmt::println("Checking {} and {}", e1, e2);
             if (e1 == e2) {
                 return;
             }
@@ -80,10 +61,33 @@ void deleteCollided(flecs::world& ecs) {
     });
 }
 
+flecs::entity spawnAnomaloid(flecs::world& ecs, Mass mass, Position pos) {
+    Radius      radius(mass.v);
+    BoundingBox boundingBox = {
+        .top = Vec2(pos.v.x - radius.v, pos.v.y - radius.v),
+        .bot = Vec2(pos.v.x + radius.v, pos.v.y + radius.v)
+    };
+
+    sf::CircleShape circle(radius.v, 100);
+    circle.setPosition(pos.v);
+    circle.setOrigin(radius.v, radius.v);
+    circle.setFillColor(sf::Color::White);
+    circle.setOutlineColor(sf::Color(230, 230, 230));
+    circle.setOutlineThickness(1);
+
+    return ecs.entity()
+        .set(AnomalyMult(randomFloat(1., 10)))
+        .set(mass)
+        .set(pos)
+        .set(radius)
+        .set(boundingBox)
+        .set(std::move(circle));
+}
+
 void spawnAnomaloids(flecs::world& ecs, int number) {
     std::exponential_distribution<float> d(1.5);
     for (int i = 0; i < number; ++i) {
-        Mass     mass(d(gen) * 8);
+        Mass     mass(d(gen) * 40);
         Position pos(randomVec2(-800, 800, -500, 500));
         spawnAnomaloid(ecs, mass, pos);
     }
@@ -94,16 +98,16 @@ void spawnAnomaloids(flecs::world& ecs, int number) {
 
 void renderAnomaloids(flecs::world& ecs, sf::RenderTarget& window) {
     ecs.each([&](const flecs::entity e, const Position& pos,
-                 const Radius& radius, const AnomalyMult& _) {
-        sf::CircleShape circle(radius.v, 100);
-        circle.setPosition(pos.v);
-        circle.setOrigin(radius.v, radius.v);
-        if (e.has<sf::Color>()) {
-            circle.setFillColor(*e.get<sf::Color>());
+                 sf::CircleShape& circle, const AnomalyMult& _) {
+        if (auto color = e.get<sf::Color>()) {
+            circle.setFillColor(*color);
         } else {
             circle.setFillColor(sf::Color::White);
         }
+        circle.setPosition(pos.v);
+
         window.draw(circle);
+
         textDrawer.draw({.pos = pos.v, .color = sf::Color::Black}, e);
         textDrawer.draw(
             {.pos = pos.v + Vec2(0, 20), .color = sf::Color::Black},
@@ -111,3 +115,8 @@ void renderAnomaloids(flecs::world& ecs, sf::RenderTarget& window) {
         );
     });
 }
+
+// void spawnAnomaloids2(flecs::world& ecs, int number) {
+//     spawnAnomaloid(ecs, Mass(10), Position({100, 100}));
+//     spawnAnomaloid(ecs, Mass(11), Position({100, 0}));
+// }
