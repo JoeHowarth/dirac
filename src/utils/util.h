@@ -6,9 +6,9 @@
 #include <sstream>
 
 #include "layered_drawer.h"
+#include "newtype.h"
 #include "text.h"
 #include "vectors.h"
-#include "newtype.h"
 
 // Note: Utility globals defined at bottom of the file
 
@@ -63,8 +63,25 @@ operator|(std::variant<Ts...> const& v, match<Fs...> const& match) {
 /*********************/
 
 TextDrawer    textDrawer("./open-sans/OpenSans-Bold.ttf");
-LayeredDrawer debugDrawer(1);
+LayeredDrawer drawer(2);
 const int     SIM_DEBUG_LAYER = 0;
 
 std::random_device rd;         // Seed
 std::mt19937       gen(rd());  // Mersenne Twister engine
+
+/**** Random ****/
+
+int randomInt(int min, int max) {
+    std::uniform_int_distribution<int> dist(min, max);
+    return dist(gen);
+}
+
+float randomFloat(float min, float max) {
+    std::uniform_real_distribution<float> dist(min, max);
+    return dist(gen);
+}
+
+// Function to generate a random Vec2 within the given range
+Vec2 randomVec2(float minX, float maxX, float minY, float maxY) {
+    return {randomFloat(minX, maxX), randomFloat(minY, maxY)};
+}

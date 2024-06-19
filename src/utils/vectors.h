@@ -51,16 +51,6 @@ Vec2 normalize(const Vec2& v) {
     return {v.x / mag, v.y / mag};
 }
 
-float randomFloat(float min, float max) {
-    static std::default_random_engine     engine;  // Default random engine
-    std::uniform_real_distribution<float> dist(min, max);
-    return dist(engine);
-}
-
-// Function to generate a random Vec2 within the given range
-Vec2 randomVector2f(float minX, float maxX, float minY, float maxY) {
-    return {randomFloat(minX, maxX), randomFloat(minY, maxY)};
-}
 
 Vec2 lerp(const Vec2& a, const Vec2& b, float t) {
     return a + (b - a) * t;

@@ -2,11 +2,14 @@
 #include <fmt/core.h>
 
 #include <SFML/Graphics.hpp>
-#include <cassert>
-#include <iostream>
-#include <random>
 
+#include "anomaloid.h"
+#include "components.h"
 #include "utils/util.h"
+
+void renderBoundingBoxes(flecs::world& ecs, sf::RenderTarget& window) {
+    ecs.each([&](const BoundingBox& box) { box.debug_draw(); });
+}
 
 sf::View initWindow(sf::RenderWindow& window);
 
@@ -16,8 +19,11 @@ int main() {
     sf::Clock frameClock;
 
     flecs::world ecs;
-
+    registerComponents(ecs);
+    registerRelations(ecs);
     ecs.set<flecs::Rest>({});
+
+    spawnAnomaloids(ecs, 40);
 
     for (int frame = 0; window.isOpen(); ++frame) {
         sf::Time deltaTime = frameClock.restart();
@@ -45,15 +51,16 @@ int main() {
             }
         }
 
+        collisionDetection(ecs);
+
+        renderAnomaloids(ecs, window);
+        renderBoundingBoxes(ecs, window);
+
         // ensure that the rest system is run (and any user defined systems)
         ecs.progress(deltaTime.asSeconds());
 
-        // example usage of debugDrawer and textDrawer
-        debugDrawer.lineStrip({{0, 0}, {100, 0}, {100, 100}, {0, 100}, {0, 0}});
-        textDrawer.draw({.pos = {0, 0}, .size = 44, .color = sf::Color::White}, "Hello BOb");
-
         textDrawer.display(window);
-        debugDrawer.display(window);
+        drawer.display(window);
         window.display();
     }
 }
